@@ -6,7 +6,8 @@ import random
 from torch.autograd import Variable
 from . import omniglot
 from . import mini_imagenet
-
+from . import hasyv2
+import pdb
 
 class Generator(data.Dataset):
     def __init__(self, root, args, partition='train', dataset='omniglot'):
@@ -15,18 +16,25 @@ class Generator(data.Dataset):
         self.args = args
 
         assert (dataset == 'omniglot' or
+                dataset == 'hasyv2' or
                 dataset == 'mini_imagenet'), 'Incorrect dataset partition'
         self.dataset = dataset
 
         if self.dataset == 'omniglot':
             self.input_channels = 1
             self.size = (28, 28)
+        elif self.dataset == 'hasyv2':
+            self.input_channels = 1
+            self.size = (32, 32)
         else:
             self.input_channels = 3
             self.size = (84, 84)
 
         if dataset == 'omniglot':
             self.loader = omniglot.Omniglot(self.root, dataset=dataset)
+            self.data = self.loader.load_dataset(self.partition == 'train', self.size)
+        elif dataset == 'hasyv2':
+            self.loader = hasyv2.Hasyv2(self.root, dataset=dataset)
             self.data = self.loader.load_dataset(self.partition == 'train', self.size)
         elif dataset == 'mini_imagenet':
             self.loader = mini_imagenet.MiniImagenet(self.root)
@@ -44,7 +52,7 @@ class Generator(data.Dataset):
             rotated_image[channel, :, :] = np.rot90(image[channel, :, :], k=times)
         return rotated_image
 
-    def get_task_batch(self, batch_size=5, n_way=20, num_shots=1, unlabeled_extra=0, cuda=False, variable=False):
+    def get_task_batch(self, batch_size=5, n_way=20, num_shots=1, unlabeled_extra=0, cuda=False, variable=False, random_replace_classes = True):
         # Init variables
         batch_x = np.zeros((batch_size, self.input_channels, self.size[0], self.size[1]), dtype='float32')
         labels_x = np.zeros((batch_size, n_way), dtype='float32')
@@ -64,7 +72,10 @@ class Generator(data.Dataset):
 
             # Sample random classes for this TASK
             classes_ = list(self.data.keys())
-            sampled_classes = random.sample(classes_, n_way)
+            if random_replace_classes:
+                sampled_classes = random.sample(classes_, n_way)
+            else:
+                sampled_classes = np.random.choice(classes_, n_way, replace=False)
             indexes_perm = np.random.permutation(n_way * num_shots)
 
             counter = 0

@@ -49,6 +49,49 @@ class EmbeddingOmniglot(nn.Module):
 
         return [e1, e2, e3, output]
 
+class EmbeddingHasyv2(nn.Module):
+    ''' In this network the input image is supposed to be 32x32 '''
+
+    def __init__(self, args, emb_size):
+        super(EmbeddingHasyv2, self).__init__()
+        self.emb_size = emb_size
+        self.nef = 64
+        self.args = args
+
+        # input is 1 x 32 x 32 -> because of max_pol2d
+        self.conv1 = nn.Conv2d(1, self.nef, 3, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(self.nef)
+        # state size. (nef) x 16 x 16 -> because of max_pol2d
+        self.conv2 = nn.Conv2d(self.nef, self.nef, 3, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(self.nef)
+
+        # state size. (1.5*ndf) x 8 x 8
+        self.conv3 = nn.Conv2d(self.nef, self.nef, 3, bias=False)
+        self.bn3 = nn.BatchNorm2d(self.nef)
+        # state size. (2*ndf) x 6 x 6
+        self.conv4 = nn.Conv2d(self.nef, self.nef, 3, bias=False)
+        self.bn4 = nn.BatchNorm2d(self.nef)
+        # state size. (2*ndf) x 4 x 4
+        self.fc_last = nn.Linear(4 * 4 * self.nef, self.emb_size, bias=False)
+        self.bn_last = nn.BatchNorm2d(self.emb_size)
+
+    def forward(self, inputs):
+        e1 = F.max_pool2d(self.bn1(self.conv1(inputs)), 2)
+        x = F.leaky_relu(e1, 0.1, inplace=True)
+
+        e2 = F.max_pool2d(self.bn2(self.conv2(x)), 2)
+        x = F.leaky_relu(e2, 0.1, inplace=True)
+
+        e3 = self.bn3(self.conv3(x))
+        x = F.leaky_relu(e3, 0.1, inplace=True)
+        e4 = self.bn4(self.conv4(x))
+        x = F.leaky_relu(e4, 0.1, inplace=True)
+        x = x.view(-1, 4 * 4 * self.nef)
+
+        output = F.leaky_relu(self.bn_last(self.fc_last(x)))
+
+        return [e1, e2, e3, output]
+
 
 class EmbeddingImagenet(nn.Module):
     ''' In this network the input image is supposed to be 28x28 '''
@@ -111,7 +154,7 @@ class MetricNN(nn.Module):
             num_inputs = self.emb_size + self.args.train_N_way
             if self.args.dataset == 'mini_imagenet':
                 self.gnn_obj = gnn_iclr.GNN_nl(args, num_inputs, nf=96, J=1)
-            elif 'omniglot' in self.args.dataset:
+            elif 'omniglot' in self.args.dataset or 'hasyv2' in self.args.dataset:
                 self.gnn_obj = gnn_iclr.GNN_nl_omniglot(args, num_inputs, nf=96, J=1)
         elif self.metric_network == 'gnn_iclr_active':
             assert(self.args.train_N_way == self.args.test_N_way)
@@ -201,6 +244,8 @@ def create_models(args):
         enc_nn = EmbeddingOmniglot(args, 64)
     elif 'mini_imagenet' == args.dataset:
         enc_nn = EmbeddingImagenet(args, 128)
+    elif 'hasyv2' == args.dataset:
+        enc_nn = EmbeddingHasyv2(args, 64)
     else:
         raise NameError('Dataset ' + args.dataset + ' not knows')
     return enc_nn, MetricNN(args, emb_size=enc_nn.emb_size)

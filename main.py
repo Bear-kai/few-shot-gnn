@@ -13,7 +13,8 @@ import numpy as np
 
 # Training settings
 parser = argparse.ArgumentParser(description='Few-Shot Learning with Graph Neural Networks')
-parser.add_argument('--exp_name', type=str, default='debug_vx', metavar='N',
+#parser.add_argument('--exp_name', type=str, default='debug_vx', metavar='N',
+parser.add_argument('--exp_name', type=str, default='hasyv2', metavar='N',
                     help='Name of the experiment')
 parser.add_argument('--batch_size', type=int, default=10, metavar='batch_size',
                     help='Size of batch)')
@@ -55,7 +56,8 @@ parser.add_argument('--dataset_root', type=str, default='datasets', metavar='N',
                     help='Root dataset')
 parser.add_argument('--test_samples', type=int, default=30000, metavar='N',
                     help='Number of shots')
-parser.add_argument('--dataset', type=str, default='mini_imagenet', metavar='N',
+parser.add_argument('--dataset', type=str, default='hasyv2', metavar='N',
+#parser.add_argument('--dataset', type=str, default='mini_imagenet', metavar='N',
                     help='omniglot')
 parser.add_argument('--dec_lr', type=int, default=10000, metavar='N',
                     help='Decreasing the learning rate every x iterations')
@@ -146,6 +148,7 @@ def train():
         ####################
         # Train
         ####################
+
         data = train_loader.get_task_batch(batch_size=args.batch_size, n_way=args.train_N_way,
                                            unlabeled_extra=args.unlabeled_extra, num_shots=args.train_N_shots,
                                            cuda=args.cuda, variable=True)
@@ -190,6 +193,10 @@ def train():
                                               test_samples=test_samples*5, partition='test')
             test.test_one_shot(args, model=[enc_nn, metric_nn, softmax_module],
                                test_samples=test_samples, partition='train')
+
+            test.test_all_symbols(args, model=[enc_nn, metric_nn, softmax_module],
+                                              test_samples=test_samples*5, partition='test')
+
             enc_nn.train()
             metric_nn.train()
 
@@ -197,15 +204,16 @@ def train():
                 test_acc = test_acc_aux
                 val_acc = val_acc_aux
 
+                ####################
+                # Save model
+                ####################
+                print('Saving model. Test acc: %f' % test_acc)
+                torch.save(enc_nn, 'checkpoints/%s/models/enc_nn.t7' % args.exp_name)
+                torch.save(metric_nn, 'checkpoints/%s/models/metric_nn.t7' % args.exp_name)
+
+
             if args.dataset == 'mini_imagenet':
                 io.cprint("Best test accuracy {:.4f} \n".format(test_acc))
-
-        ####################
-        # Save model
-        ####################
-        if (batch_idx + 1) % args.save_interval == 0:
-            torch.save(enc_nn, 'checkpoints/%s/models/enc_nn.t7' % args.exp_name)
-            torch.save(metric_nn, 'checkpoints/%s/models/metric_nn.t7' % args.exp_name)
 
     # Test after training
     test.test_one_shot(args, model=[enc_nn, metric_nn, softmax_module],

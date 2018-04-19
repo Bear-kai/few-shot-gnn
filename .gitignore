@@ -96,3 +96,7 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# chekpoint folder
+checkpoints/
+datasets/
