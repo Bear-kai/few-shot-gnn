@@ -14,7 +14,7 @@ import numpy as np
 # Training settings
 parser = argparse.ArgumentParser(description='Few-Shot Learning with Graph Neural Networks')
 #parser.add_argument('--exp_name', type=str, default='debug_vx', metavar='N',
-parser.add_argument('--exp_name', type=str, default='hasyv2', metavar='N',
+parser.add_argument('--exp_name', type=str, default='hasyv2_20nway', metavar='N',
                     help='Name of the experiment')
 parser.add_argument('--batch_size', type=int, default=10, metavar='batch_size',
                     help='Size of batch)')
@@ -38,9 +38,9 @@ parser.add_argument('--save_interval', type=int, default=300000, metavar='N',
                     help='how many batches between each model saving')
 parser.add_argument('--test_interval', type=int, default=2000, metavar='N',
                     help='how many batches between each test')
-parser.add_argument('--test_N_way', type=int, default=5, metavar='N',
+parser.add_argument('--test_N_way', type=int, default=20, metavar='N',
                     help='Number of classes for doing each classification run')
-parser.add_argument('--train_N_way', type=int, default=5, metavar='N',
+parser.add_argument('--train_N_way', type=int, default=20, metavar='N',
                     help='Number of classes for doing each training comparison')
 parser.add_argument('--test_N_shots', type=int, default=1, metavar='N',
                     help='Number of shots in test')
@@ -148,7 +148,7 @@ def train():
         ####################
         # Train
         ####################
-        '''
+
         data = train_loader.get_task_batch(batch_size=args.batch_size, n_way=args.train_N_way,
                                            unlabeled_extra=args.unlabeled_extra, num_shots=args.train_N_shots,
                                            cuda=args.cuda, variable=True)
@@ -177,7 +177,7 @@ def train():
                 io.cprint(display_str)
                 counter = 0
                 total_loss = 0
-        '''
+
         ####################
         # Test
         ####################
@@ -194,7 +194,6 @@ def train():
                                               test_samples=test_samples*5, partition='test')
             test.test_one_shot(args, model=[enc_nn, metric_nn, softmax_module],
                                test_samples=test_samples, partition='train')
-
             test_acc_aux = test.test_all_symbols(args, model=[enc_nn, metric_nn, softmax_module],
                                               test_samples=test_samples*5, partition='test')
 

@@ -100,6 +100,7 @@ def test_all_symbols(args, model, test_samples=5000, partition='test'):
         # Compute embedding x
         z = enc_nn(x)[-1]
 
+        hist_winner_classes = np.zeros((args.batch_size_test,max_classes))
         first_batch_lowest_scores = []
         classes_to_do = np.arange(max_classes)[np.newaxis,:].repeat(args.batch_size_test,axis=0)
         isFinished = False
@@ -112,6 +113,8 @@ def test_all_symbols(args, model, test_samples=5000, partition='test'):
                 arr_add_classes_tmp = np.array(first_batch_lowest_scores)[:,np.newaxis].repeat(add_classes, axis=1)
                 classes_to_do_positive = np.hstack((classes_to_do_positive, arr_add_classes_tmp))
             selected_classes = np.vstack([np.random.choice(i,args.test_N_way,replace=False) for i in classes_to_do_positive])
+
+            # condition : np.sum(selected_classes.astype(np.int)[0,:] == labels_x_cpu.int().sum(dim=1)[0]) == 1
 
             data = loader.get_test_batch(fixed_classes=selected_classes,batch_size=args.batch_size_test, n_way=args.test_N_way,
                                      num_shots=args.test_N_shots, unlabeled_extra=args.unlabeled_extra)
@@ -141,6 +144,17 @@ def test_all_symbols(args, model, test_samples=5000, partition='test'):
             y_pred = y_pred.data.cpu().numpy()
             y_pred = np.argmax(y_pred, axis=1)
 
+            for i, sel_classes in enumerate(selected_classes):
+                hist_winner_classes[i][sel_classes[y_pred[i]]] +=1
+
+            #for i, sel_classes in enumerate(selected_classes):
+            #    print ("%d, %d: %d" % (i, sel_classes[y_pred[i]], hist_winner_classes[i][sel_classes[y_pred[i]]]))
+
+            #print("+++++++++++++++++++++")
+            #for i,class_ in enumerate(selected_classes[0, :]):
+            #    print("%d: %d" % (class_, hist_winner_classes[0][class_]))
+            #print("+++++++++++++++++++++")
+
             # In the first n-way find the labels at each index of the batch with lowest score and keep the indexes
             # to add them in the finel n-way if there is not enough labels to form a batch.
             if first_batch_lowest_scores == []:
@@ -157,6 +171,23 @@ def test_all_symbols(args, model, test_samples=5000, partition='test'):
                 lowest_score = np.delete(lowest_score, y_pred[i])
                 classes_lowest_score = selected_classes[i][lowest_score]
                 classes_to_do[i][classes_lowest_score] = -1
+
+
+        #print('Expected class in 0: %d. Predicted class in 0: %d' %
+        #      (labels_x_cpu.int().sum(dim=1)[0],classes_to_do_positive[0][y_pred[0]]))
+
+        '''
+        import matplotlib.pyplot as plt
+        import plotly.plotly as py
+        # Learn about API authentication here: https://plot.ly/python/getting-started
+        # Find your api_key here: https://plot.ly/settings/api
+        plt.hist([np.arange(len(hist_winner_classes[0,:])),hist_winner_classes[0,:]])
+        plt.title("hist_winner_classes")
+        plt.xlabel("Value")
+        plt.ylabel("Frequency")
+        fig = plt.gcf()
+        plot_url = py.plot_mpl(fig, filename='mpl-basic-histogram')
+        '''
 
         # Final prediction
         y_pred = [classes_batch[y_pred[i]] for i,classes_batch in enumerate(classes_to_do_positive)]
