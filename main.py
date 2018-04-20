@@ -148,7 +148,7 @@ def train():
         ####################
         # Train
         ####################
-
+        '''
         data = train_loader.get_task_batch(batch_size=args.batch_size, n_way=args.train_N_way,
                                            unlabeled_extra=args.unlabeled_extra, num_shots=args.train_N_shots,
                                            cuda=args.cuda, variable=True)
@@ -177,7 +177,7 @@ def train():
                 io.cprint(display_str)
                 counter = 0
                 total_loss = 0
-
+        '''
         ####################
         # Test
         ####################
@@ -189,12 +189,13 @@ def train():
             if args.dataset == 'mini_imagenet':
                 val_acc_aux = test.test_one_shot(args, model=[enc_nn, metric_nn, softmax_module],
                                                  test_samples=test_samples*5, partition='val')
+
             test_acc_aux = test.test_one_shot(args, model=[enc_nn, metric_nn, softmax_module],
                                               test_samples=test_samples*5, partition='test')
             test.test_one_shot(args, model=[enc_nn, metric_nn, softmax_module],
                                test_samples=test_samples, partition='train')
 
-            test.test_all_symbols(args, model=[enc_nn, metric_nn, softmax_module],
+            test_acc_aux = test.test_all_symbols(args, model=[enc_nn, metric_nn, softmax_module],
                                               test_samples=test_samples*5, partition='test')
 
             enc_nn.train()

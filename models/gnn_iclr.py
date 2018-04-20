@@ -142,7 +142,6 @@ class GNN_nl_omniglot(nn.Module):
         self.input_features = input_features
         self.nf = nf
         self.J = J
-
         self.num_layers = 2
         for i in range(self.num_layers):
             module_w = Wcompute(self.input_features + int(nf / 2) * i,

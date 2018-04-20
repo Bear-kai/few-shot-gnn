@@ -66,7 +66,6 @@ class Generator(data.Dataset):
             labels_yi.append(np.zeros((batch_size, n_way), dtype='float32'))
             oracles_yi.append(np.zeros((batch_size, n_way), dtype='float32'))
         # Iterate over tasks for the same batch
-
         for batch_counter in range(batch_size):
             positive_class = random.randint(0, n_way - 1)
 
@@ -113,6 +112,75 @@ class Generator(data.Dataset):
         return_arr = [torch.from_numpy(batch_x), torch.from_numpy(labels_x), torch.from_numpy(labels_x_scalar),
                       torch.from_numpy(labels_x_global), batches_xi, labels_yi, oracles_yi,
                       torch.from_numpy(hidden_labels)]
+        if cuda:
+            return_arr = self.cast_cuda(return_arr)
+        if variable:
+            return_arr = self.cast_variable(return_arr)
+        return return_arr
+
+    def get_test_sample(self, batch_size=5, n_way=20, num_shots=1, cuda=False, variable=False):
+        # Init variables
+        batch_x = np.zeros((batch_size, self.input_channels, self.size[0], self.size[1]), dtype='float32')
+        labels_x = np.zeros((batch_size, n_way), dtype='float32')
+        # Iterate over tasks for the same batch
+        for batch_counter in range(batch_size):
+
+            positive_class = random.randint(0, n_way - 1)
+            # Sample random classes for this TASK
+            classes_ = list(self.data.keys())
+            sampled_classes = random.sample(classes_, n_way)
+
+            for class_counter, class_ in enumerate(sampled_classes):
+                if class_counter == positive_class:
+                    # We take num_shots + one sample for one class
+                    samples = random.sample(self.data[class_], num_shots+1)
+                    # Test sample is loaded
+                    batch_x[batch_counter, :, :, :] = samples[0]
+                    labels_x[batch_counter, class_counter] = class_
+
+        return_arr = [torch.from_numpy(batch_x), torch.from_numpy(labels_x)]
+        if cuda:
+            return_arr = self.cast_cuda(return_arr)
+        if variable:
+            return_arr = self.cast_variable(return_arr)
+        return return_arr
+
+    def get_test_batch(self, fixed_classes, batch_size=5, n_way=20, num_shots=1, unlabeled_extra=0, cuda=False, variable=False):
+
+        # Init variables
+        #batch_x = np.zeros((batch_size, self.input_channels, self.size[0], self.size[1]), dtype='float32')
+        #labels_x = np.zeros((batch_size, n_way), dtype='float32')
+        #labels_x_global = np.zeros(batch_size, dtype='int64')
+        target_distances = np.zeros((batch_size, n_way * num_shots), dtype='float32')
+        hidden_labels = np.zeros((batch_size, n_way * num_shots + 1), dtype='float32')
+        batches_xi, labels_yi, oracles_yi = [], [], []
+        for i in range(n_way*num_shots):
+            batches_xi.append(np.zeros((batch_size, self.input_channels, self.size[0], self.size[1]), dtype='float32'))
+            labels_yi.append(np.zeros((batch_size, n_way), dtype='float32'))
+            oracles_yi.append(np.zeros((batch_size, n_way), dtype='float32'))
+
+        # Iterate over tasks for the same batch
+        for batch_counter in range(batch_size):
+            counter = 0
+            for class_counter, class_ in enumerate(fixed_classes[batch_counter]):
+                samples = random.sample(self.data[class_], num_shots)
+
+                for s_i in range(0, len(samples)):
+                    batches_xi[counter][batch_counter, :, :, :] = samples[s_i]
+                    if s_i < unlabeled_extra:
+                        labels_yi[counter][batch_counter, class_counter] = 0
+                        hidden_labels[batch_counter, counter + 1] = 1
+                    else:
+                        labels_yi[counter][batch_counter, class_counter] = 1
+                    oracles_yi[counter][batch_counter, class_counter] = 1
+                    target_distances[batch_counter, counter] = 0
+                    counter += 1
+
+        batches_xi = [torch.from_numpy(batch_xi) for batch_xi in batches_xi]
+        labels_yi = [torch.from_numpy(label_yi) for label_yi in labels_yi]
+        oracles_yi = [torch.from_numpy(oracle_yi) for oracle_yi in oracles_yi]
+
+        return_arr = [batches_xi, labels_yi, oracles_yi,torch.from_numpy(hidden_labels)]
         if cuda:
             return_arr = self.cast_cuda(return_arr)
         if variable:
