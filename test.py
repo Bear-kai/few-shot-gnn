@@ -190,7 +190,7 @@ def test_all_symbols(args, model, test_samples=5000, partition='test'):
         '''
 
         # Final prediction
-        y_pred = [classes_batch[y_pred[i]] for i,classes_batch in enumerate(classes_to_do_positive)]
+        y_pred = [classes_batch[y_pred[i]] for i,classes_batch in enumerate(selected_classes)]
 
         # labels gt
         labels_x_cpu = labels_x_cpu.sum(dim=1).cpu().numpy()
@@ -201,8 +201,8 @@ def test_all_symbols(args, model, test_samples=5000, partition='test'):
                 correct += 1
             total += 1
 
-        if (n_iter+1) % 5 == 0:
-            io.cprint('{} correct from {} \tAccuracy: {:.3f}%)'.format(correct, total, 100.0*correct/total))
+        #if (n_iter+1) % 5 == 0:
+        #    io.cprint('{} correct from {} \tAccuracy: {:.3f}%)'.format(correct, total, 100.0*correct/total))
 
     io.cprint('{} correct from {} \tAccuracy: {:.3f}%)'.format(correct, total, 100.0*correct/total))
     io.cprint('*** TEST FINISHED ***\n'.format(correct, total, 100.0 * correct / total))
